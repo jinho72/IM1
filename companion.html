@@ -590,7 +590,11 @@ input[type=range] {
 // CONFIG — change WS_URL to your server
 // ════════════════════════════════════════════════════════════════════════════
  /*const WS_URL = 'ws://localhost:8080';*/
-  const ws = new WebSocket('wss://inyunmediated.up.railway.app');
+  
+const WS_URL = window.location.hostname === 'localhost'
+  ? 'ws://localhost:8080'
+  : 'wss://im1-production.up.railway.app';
+  const ws = new WebSocket(WS_URL);
 
 
 // ════════════════════════════════════════════════════════════════════════════
