@@ -1,0 +1,12 @@
+{
+  "name": "companion-server",
+  "version": "1.0.0",
+  "description": "Companion Exhibition — Orchestration Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
