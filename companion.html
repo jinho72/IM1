@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Companion</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #01010a;
+  --crystal: #a8d8ff;
+  --crystal2: #c4b5fd;
+  --gold: #f5d97e;
+  --green: #86efac;
+  --muted: rgba(232,232,240,0.28);
+  --border: rgba(255,255,255,0.07);
+  --surface: rgba(255,255,255,0.03);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  background:var(--bg); color:#e8e8f0;
+  font-family:'Space Mono', monospace;
+}
+
+/* ── Screens ──────────────────────────────────────────────────────────────── */
+.screen {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition: opacity 0.6s ease;
+  overflow:hidden;
+}
+.screen.active { opacity:1; pointer-events:all; }
+
+canvas#bg { position:fixed; inset:0; z-index:0; }
+
+/* ── Shared layout ────────────────────────────────────────────────────────── */
+.safe {
+  position:relative; z-index:1;
+  flex:1; display:flex; flex-direction:column;
+  padding: env(safe-area-inset-top, 20px) 24px env(safe-area-inset-bottom, 20px);
+  max-width: 480px; margin: 0 auto; width:100%;
+}
+
+.mono { font-family:'Space Mono',monospace; }
+.syne { font-family:'Syne',sans-serif; }
+
+/* ── SCREEN 1: Welcome ────────────────────────────────────────────────────── */
+#s-welcome { background:#01010a; }
+#s-welcome .safe { padding:0; position:relative; }
+
+/* Full-bleed blob canvas sits behind everything */
+#welcome-canvas {
+  position:absolute; inset:0;
+  width:100% !important; height:100% !important;
+}
+
+/* Overlay text sits on top of blob */
+.w-overlay {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  justify-content:space-between;
+  pointer-events:none;
+}
+
+/* Status bar */
+.w-statusbar {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:16px 24px 0;
+  font-size:10px; letter-spacing:0.12em; color:var(--muted);
+}
+
+/* Top identity block */
+.w-identity {
+  padding:10px 24px 0;
+  display:flex; justify-content:space-between; align-items:flex-start;
+}
+.w-sublabel {
+  font-size:7.5px; letter-spacing:0.35em; text-transform:uppercase;
+  color:var(--muted); display:block; margin-bottom:5px;
+}
+.w-title-name {
+  font-family:'Syne',sans-serif; font-size:22px; font-weight:800;
+  letter-spacing:-0.01em; line-height:1;
+  opacity:0; animation: fadeWord 0.8s ease 0.3s forwards;
+}
+.w-hash {
+  font-size:9px; letter-spacing:0.14em; color:var(--muted);
+  margin-top:4px; display:block;
+  opacity:0; animation: fadeWord 0.8s ease 0.7s forwards;
+}
+.w-world { text-align:right; }
+.w-world-label {
+  font-size:7.5px; letter-spacing:0.25em; text-transform:uppercase;
+  color:var(--muted); display:block; margin-bottom:5px;
+}
+.w-world-mood {
+  font-family:'Syne',sans-serif; font-size:15px; font-weight:700;
+  opacity:0; animation: fadeWord 0.8s ease 0.5s forwards;
+}
+
+/* Center YOU glyph */
+.w-center {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:10px; position:relative;
+}
+.w-ring {
+  position:absolute; width:220px; height:220px; border-radius:50%;
+  border:1px solid rgba(255,255,255,0.05);
+  animation: ringPulse 5s ease-in-out infinite;
+}
+.w-you {
+  font-size:8px; letter-spacing:0.45em; color:rgba(255,255,255,0.18);
+  text-transform:uppercase; margin-top:120px;
+  opacity:0; animation: fadeWord 1.2s ease 1.0s forwards;
+}
+
+/* Bottom poetic HUD */
+.w-bottom {
+  background: linear-gradient(to top, rgba(1,1,10,0.97) 0%, rgba(1,1,10,0.7) 60%, transparent 100%);
+  padding:20px 24px 0;
+  pointer-events:all;
+}
+.w-divider { height:1px; background:rgba(255,255,255,0.06); margin-bottom:16px; }
+
+/* Poem lines — staggered fade in */
+.w-poem {
+  margin-bottom:20px;
+}
+.w-line {
+  font-family:'Syne',sans-serif; font-weight:400; font-size:13px;
+  line-height:1.65; color:rgba(232,232,240,0.45);
+  opacity:0;
+}
+.w-line.hl { color:rgba(232,232,240,0.75); font-weight:600; }
+.w-line:nth-child(1) { animation: fadeWord 0.9s ease 1.2s forwards; }
+.w-line:nth-child(2) { animation: fadeWord 0.9s ease 1.55s forwards; }
+.w-line:nth-child(3) { animation: fadeWord 0.9s ease 1.9s forwards; }
+.w-line:nth-child(4) { animation: fadeWord 0.9s ease 2.25s forwards; }
+
+.w-begin-btn {
+  width:100%; padding:15px; border-radius:12px; margin-bottom:32px;
+  font-family:'Space Mono',monospace; font-size:9px; letter-spacing:0.28em;
+  text-transform:uppercase; cursor:pointer; border:none;
+  background:rgba(168,216,255,0.09); color:var(--crystal);
+  border:1px solid rgba(168,216,255,0.2);
+  opacity:0; animation: fadeWord 0.9s ease 2.6s forwards;
+  transition: background 0.2s;
+}
+.w-begin-btn:active { background:rgba(168,216,255,0.18); }
+
+@keyframes fadeWord {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── SCREEN 2: Identity ───────────────────────────────────────────────────── */
+#s-identity .safe { gap:0; padding-top: 40px; overflow-y:auto; }
+
+.id-header { margin-bottom:28px; }
+.id-step { font-size:8px; letter-spacing:0.35em; color:var(--muted); margin-bottom:8px; }
+.id-title { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; line-height:1.1; }
+
+/* Mediation triangle */
+.triangle-section { margin-bottom:28px; }
+.section-label {
+  font-size:7.5px; letter-spacing:0.3em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:14px; display:block;
+}
+.triangle-vis {
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:16px; height:100px; position:relative;
+}
+#tri-canvas { width:180px; height:100px; }
+
+.slider-group { display:flex; flex-direction:column; gap:12px; }
+.slider-row { display:flex; align-items:center; gap:10px; }
+.slider-name { font-size:8px; letter-spacing:0.15em; color:var(--muted); width:44px; flex-shrink:0; }
+.slider-track {
+  flex:1; height:2px; background:rgba(255,255,255,0.08);
+  border-radius:2px; position:relative; cursor:pointer;
+}
+.slider-fill { height:100%; border-radius:2px; transition:width 0.1s; }
+.slider-pct { font-size:9px; color:rgba(255,255,255,0.3); width:28px; text-align:right; flex-shrink:0; }
+input[type=range] {
+  position:absolute; inset:0; width:100%; height:100%;
+  opacity:0; cursor:pointer; margin:0; padding:0;
+  -webkit-appearance:none; appearance:none;
+}
+
+/* Questions */
+.questions-section { margin-bottom:28px; }
+.q-item { margin-bottom:20px; }
+.q-prompt {
+  font-family:'Syne',sans-serif; font-size:14px; font-weight:600;
+  line-height:1.35; margin-bottom:10px;
+}
+.q-input {
+  width:100%; background:var(--surface);
+  border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; color:#e8e8f0;
+  font-family:'Space Mono',monospace; font-size:11px; line-height:1.6;
+  resize:none; outline:none;
+  transition: border-color 0.3s ease;
+}
+.q-input:focus { border-color:rgba(168,216,255,0.3); }
+.q-input::placeholder { color:rgba(232,232,240,0.2); }
+
+/* Image upload */
+.img-section { margin-bottom:32px; }
+.img-drop {
+  border:1px dashed rgba(255,255,255,0.12); border-radius:12px;
+  padding:24px 16px; text-align:center; cursor:pointer;
+  transition: all 0.3s ease; position:relative;
+  background:var(--surface);
+}
+.img-drop:active, .img-drop.has-image { border-color:rgba(168,216,255,0.3); }
+.img-drop input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+.img-icon { font-size:24px; margin-bottom:8px; opacity:0.4; }
+.img-label { font-size:9px; letter-spacing:0.2em; color:var(--muted); text-transform:uppercase; }
+.img-preview {
+  width:64px; height:64px; border-radius:8px; object-fit:cover;
+  display:none; margin:0 auto 8px;
+}
+.img-drop.has-image .img-icon { display:none; }
+.img-drop.has-image .img-preview { display:block; }
+.img-drop.has-image .img-label { color:var(--crystal); }
+
+/* ── SCREEN 3: Lobby ──────────────────────────────────────────────────────── */
+#s-lobby .safe { padding-top:24px; }
+
+.lobby-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+.lobby-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; }
+.lobby-count {
+  font-size:8px; letter-spacing:0.2em; color:var(--green);
+  display:flex; align-items:center; gap:5px;
+}
+.live-dot {
+  width:4px; height:4px; border-radius:50%; background:var(--green);
+  animation: blink 1.5s ease infinite;
+}
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.2} }
+
+.world-strip {
+  display:flex; gap:8px; margin-bottom:16px; overflow-x:auto;
+  padding-bottom:4px; scrollbar-width:none;
+}
+.world-strip::-webkit-scrollbar { display:none; }
+.w-chip {
+  flex-shrink:0; background:var(--surface); border:1px solid var(--border);
+  border-radius:6px; padding:6px 10px;
+  font-size:8px; letter-spacing:0.12em; color:var(--muted); text-transform:uppercase;
+  white-space:nowrap;
+}
+.w-chip span { color:#e8e8f0; }
+
+/* Lobby blob field */
+.field-wrap {
+  flex:1; position:relative;
+  min-height:0; overflow:hidden;
+}
+#lobby-canvas { width:100%; height:100%; display:block; }
+
+/* Bottom info */
+.lobby-foot {
+  padding-top:12px; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.lf-left { font-size:8px; letter-spacing:0.15em; color:var(--muted); }
+.lf-right { font-size:8px; letter-spacing:0.15em; color:var(--muted); }
+
+/* ── Mini triangle widget (bottom-right corner of lobby) ─────────────────── */
+.mini-tri-btn {
+  position:absolute;
+  bottom:16px; right:16px;
+  width:52px; height:52px;
+  cursor:pointer; z-index:10;
+  border-radius:8px;
+  overflow:hidden;
+}
+#mini-tri-canvas { width:52px; height:52px; display:block; }
+
+/* ── Intent fullscreen overlay ───────────────────────────────────────────── */
+#intent-overlay {
+  position:fixed; inset:0; z-index:200;
+  background:#01010a;
+  display:flex; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition: opacity 0.45s cubic-bezier(0.4,0,0.2,1);
+}
+#intent-overlay.open { opacity:1; pointer-events:all; }
+
+/* Back button — top left */
+.intent-back-btn {
+  position:absolute;
+  top: calc(env(safe-area-inset-top,14px) + 10px);
+  left:20px; z-index:10;
+  font-family:'Space Mono',monospace; font-size:8px; letter-spacing:0.2em;
+  text-transform:uppercase; color:var(--crystal);
+  background:rgba(168,216,255,0.08); border:1px solid rgba(168,216,255,0.18);
+  border-radius:8px; padding:9px 14px; cursor:pointer;
+  transition: background 0.2s;
+}
+.intent-back-btn:active { background:rgba(168,216,255,0.18); }
+
+/* Mini blob — top-left, below back button */
+#intent-blob-canvas {
+  position:absolute;
+  top: calc(env(safe-area-inset-top,14px) + 62px);
+  left:16px;
+  width:80px; height:80px;
+  pointer-events:none;
+}
+
+/* PRIMARY (large) triangle — center */
+.intent-tri-primary {
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-52%);
+  cursor:pointer;
+  transition: width 0.45s cubic-bezier(0.4,0,0.2,1),
+              height 0.45s cubic-bezier(0.4,0,0.2,1),
+              top 0.45s cubic-bezier(0.4,0,0.2,1),
+              left 0.45s cubic-bezier(0.4,0,0.2,1),
+              transform 0.45s cubic-bezier(0.4,0,0.2,1);
+  width:72vw; height:72vw;
+  max-width:320px; max-height:320px;
+}
+
+/* SECONDARY (small) triangle — bottom-right corner */
+.intent-tri-secondary {
+  position:absolute;
+  bottom: calc(env(safe-area-inset-bottom,20px) + 24px);
+  right:20px;
+  width:80px; height:80px;
+  cursor:pointer;
+  transition: width 0.45s cubic-bezier(0.4,0,0.2,1),
+              height 0.45s cubic-bezier(0.4,0,0.2,1),
+              bottom 0.45s, right 0.45s;
+}
+.intent-tri-secondary:active { opacity:0.7; }
+
+/* Label under primary triangle */
+.intent-pri-label {
+  position:absolute;
+  top: calc(50% + 36vw + 8px);
+  left:50%; transform:translateX(-50%);
+  font-size:7px; letter-spacing:0.35em; text-transform:uppercase; color:var(--muted);
+  white-space:nowrap; pointer-events:none;
+  transition: top 0.45s cubic-bezier(0.4,0,0.2,1);
+}
+/* Label above secondary (bottom-right) */
+.intent-sec-label {
+  position:absolute;
+  bottom: calc(env(safe-area-inset-bottom,20px) + 108px);
+  right:20px;
+  font-size:7px; letter-spacing:0.25em; text-transform:uppercase;
+  color:rgba(232,232,240,0.18); text-align:right; pointer-events:none;
+}
+
+/* ── Shared button ────────────────────────────────────────────────────────── */
+.btn {
+  width:100%; padding:16px; border-radius:12px;
+  font-family:'Space Mono',monospace; font-size:10px; letter-spacing:0.25em;
+  text-transform:uppercase; border:none; cursor:pointer;
+  transition: all 0.2s ease; outline:none;
+}
+.btn-primary {
+  background:rgba(168,216,255,0.12); color:var(--crystal);
+  border:1px solid rgba(168,216,255,0.25);
+}
+.btn-primary:active { background:rgba(168,216,255,0.2); }
+
+/* WS status */
+.ws-bar {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  display:flex; align-items:center; justify-content:center; gap:5px;
+  padding:6px; font-size:7px; letter-spacing:0.2em; color:rgba(255,255,255,0.15);
+  pointer-events:none;
+}
+.ws-dot-sm { width:4px; height:4px; border-radius:50%; background:#333; transition:background 0.4s; }
+.ws-dot-sm.connecting { background:var(--gold); animation:blink 0.8s infinite; }
+.ws-dot-sm.connected  { background:var(--green); }
+.ws-dot-sm.error      { background:#f87171; }
+
+/* Transition */
+.fade-up {
+  opacity:0; transform:translateY(18px);
+  animation: fadeUp 0.5s ease forwards;
+}
+@keyframes fadeUp { to { opacity:1; transform:translateY(0); } }
+.fade-up:nth-child(1){animation-delay:0.05s}
+.fade-up:nth-child(2){animation-delay:0.12s}
+.fade-up:nth-child(3){animation-delay:0.19s}
+.fade-up:nth-child(4){animation-delay:0.26s}
+.fade-up:nth-child(5){animation-delay:0.33s}
+</style>
+</head>
+<body>
+
+<!-- Ambient background canvas -->
+<canvas id="bg"></canvas>
+
+<!-- WS status -->
+<div class="ws-bar">
+  <div class="ws-dot-sm connecting" id="wsDot"></div>
+  <span id="wsLabel">CONNECTING</span>
+</div>
+
+<!-- ── SCREEN 1: Welcome ────────────────────────────────────────────────── -->
+<div class="screen active" id="s-welcome">
+  <div class="safe">
+    <!-- Full-bleed Three.js blob -->
+    <canvas id="welcome-canvas" width="750" height="1334"></canvas>
+
+    <!-- Overlay text -->
+    <div class="w-overlay">
+      <!-- Status bar -->
+      <div>
+        <div class="w-statusbar">
+          <span>COMPANION</span>
+          <span id="w-ws-status">◌</span>
+          <span>⬤ ⬤ ⬤</span>
+        </div>
+
+        <!-- Identity header -->
+        <div class="w-identity">
+          <div>
+            <span class="w-sublabel">Your Signifier</span>
+            <div class="w-title-name">FORM-∅</div>
+            <span class="w-hash">#0000 · 0000 · 00</span>
+          </div>
+          <div class="w-world">
+            <span class="w-world-label">World</span>
+            <div class="w-world-mood" id="w-mood">DRIFT</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center ring + YOU label -->
+      <div class="w-center">
+        <div class="w-ring"></div>
+        <span class="w-you">UNFORMED</span>
+      </div>
+
+      <!-- Bottom poetic section -->
+      <div class="w-bottom">
+        <div class="w-divider"></div>
+        <div class="w-poem">
+          <div class="w-line hl">Something is waiting to take shape.</div>
+          <div class="w-line">It has no colour yet. No weight.</div>
+          <div class="w-line">Answer a few questions and it will become yours —</div>
+          <div class="w-line">then join the others in the field.</div>
+        </div>
+        <button class="w-begin-btn" onclick="goToIdentity()">Begin forming →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 2: Identity ───────────────────────────────────────────────── -->
+<div class="screen" id="s-identity">
+  <div class="safe">
+    <div class="id-header fade-up">
+      <div class="id-step">Step 01 — Identity</div>
+      <div class="id-title">Shape your<br>signifier.</div>
+    </div>
+
+    <!-- Mediation triangle sliders -->
+    <div class="triangle-section fade-up">
+      <span class="section-label">Influence balance</span>
+      <div class="triangle-vis">
+        <canvas id="tri-canvas" width="360" height="200"></canvas>
+      </div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <span class="slider-name" style="color:var(--crystal)">AI</span>
+          <div class="slider-track">
+            <div class="slider-fill" id="sf-ai" style="width:33%;background:var(--crystal)"></div>
+            <input type="range" min="0" max="100" value="33" id="sl-ai" oninput="onSlider()">
+          </div>
+          <span class="slider-pct" id="sp-ai">33%</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-name" style="color:var(--gold)">ARTIST</span>
+          <div class="slider-track">
+            <div class="slider-fill" id="sf-art" style="width:33%;background:var(--gold)"></div>
+            <input type="range" min="0" max="100" value="33" id="sl-art" oninput="onSlider()">
+          </div>
+          <span class="slider-pct" id="sp-art">33%</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-name" style="color:var(--green)">USER</span>
+          <div class="slider-track">
+            <div class="slider-fill" id="sf-usr" style="width:34%;background:var(--green)"></div>
+            <input type="range" min="0" max="100" value="34" id="sl-usr" oninput="onSlider()">
+          </div>
+          <span class="slider-pct" id="sp-usr">34%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Questions -->
+    <div class="questions-section fade-up" id="questionsContainer">
+      <!-- injected by JS from server -->
+    </div>
+
+    <!-- Image upload -->
+    <div class="img-section fade-up">
+      <span class="section-label">Add an image (optional)</span>
+      <div class="img-drop" id="imgDrop">
+        <input type="file" accept="image/*" id="imgInput" onchange="onImageChange(event)">
+        <img class="img-preview" id="imgPreview" alt="">
+        <div class="img-icon">◎</div>
+        <div class="img-label">Upload a photo or image</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary fade-up" onclick="submitIdentity()">
+      Submit & enter the field →
+    </button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ── SCREEN 3: Lobby ──────────────────────────────────────────────────── -->
+<div class="screen" id="s-lobby">
+  <div class="safe" style="padding-bottom:16px">
+    <div class="lobby-header">
+      <div class="lobby-title">The Field</div>
+      <div class="lobby-count">
+        <div class="live-dot"></div>
+        <span id="lobbyCountLabel">0 present</span>
+      </div>
+    </div>
+
+    <!-- World strip -->
+    <div class="world-strip" id="worldStrip">
+      <div class="w-chip">Mood <span id="wMood">DRIFT</span></div>
+      <div class="w-chip">AI <span id="wAI">40%</span></div>
+      <div class="w-chip">Artist <span id="wArtist">35%</span></div>
+      <div class="w-chip">User <span id="wUser">25%</span></div>
+      <div class="w-chip">Energy <span id="wEnergy">—</span></div>
+    </div>
+
+    <!-- Field canvas -->
+    <div class="field-wrap" id="fieldWrap">
+      <canvas id="lobby-canvas"></canvas>
+      <!-- Mini triangle widget — tap to open intent view -->
+      <div class="mini-tri-btn" id="miniTriBtn" onclick="openIntentOverlay()">
+        <canvas id="mini-tri-canvas" width="88" height="88"></canvas>
+      </div>
+    </div>
+
+    <div class="lobby-foot">
+      <span class="lf-left" id="myIdLabel">YOU</span>
+      <span class="lf-right" id="crossLabel">FIELD INFLUENCE: —</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Intent fullscreen overlay ──────────────────────────────────────────── -->
+<div id="intent-overlay">
+  <!-- Back button top-left -->
+  <button class="intent-back-btn" onclick="closeIntentOverlay()">← Field</button>
+
+  <!-- Mini blob (your identity) — below back button, top-left -->
+  <canvas id="intent-blob-canvas" width="160" height="160"></canvas>
+
+  <!-- PRIMARY triangle — large, center — tap to swap -->
+  <canvas id="intent-you-canvas" class="intent-tri-primary" width="640" height="640" onclick="swapIntentTriangles()"></canvas>
+
+  <!-- SECONDARY triangle — small, bottom-right corner — tap to swap -->
+  <canvas id="intent-field-canvas" class="intent-tri-secondary" width="160" height="160" onclick="swapIntentTriangles()"></canvas>
+
+  <!-- Primary label (under center tri) -->
+  <span class="intent-pri-label" id="intent-pri-label">YOU</span>
+
+  <!-- Secondary label (above corner tri) -->
+  <span class="intent-sec-label" id="intent-sec-label">FIELD AVG</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+// CONFIG — change WS_URL to your server
+// ════════════════════════════════════════════════════════════════════════════
+const WS_URL = 'ws://localhost:8080';
+
+// ════════════════════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════════════════════
+let sessionId = null;
+let myDNA     = null;
+let currentDNA = null;   // what the blob is currently rendering
+let otherBlobs = [];     // [{id, color, innerGlow, ...}]
+let worldData  = {};
+let questions  = [];
+let imageHash  = 0;
+let intent     = { ai:33, artist:33, user:34 };
+
+// ════════════════════════════════════════════════════════════════════════════
+// NEUTRAL DNA (crystal, unformed)
+// ════════════════════════════════════════════════════════════════════════════
+function neutralDNA() {
+  return {
+    color:[0.72,0.88,1.0],
+    freqs:[1.0,1.0,1.0,1.0,1.0,1.0],
+    amps:[0.04,0.04,0.04,0.04,0.04,0.04],
+    phases:[0.0,0.0,0.0,0.0,0.0,0.0],
+    glossiness:0.95, transparency:0.85, iridBase:0.12, innerGlow:0.08,
+    breathFreq:0.4, breathAmt:0.006, rotXRate:0.0003, rotYRate:0.0008, rotZRate:0.0002,
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// AMBIENT BG CANVAS (subtle particle field)
+// ════════════════════════════════════════════════════════════════════════════
+(function initBG() {
+  const c = document.getElementById('bg');
+  const ctx = c.getContext('2d');
+  const pts = [];
+  function resize() { c.width=innerWidth; c.height=innerHeight; }
+  resize(); window.addEventListener('resize',resize);
+  for (let i=0;i<60;i++) pts.push({
+    x:Math.random()*innerWidth, y:Math.random()*innerHeight,
+    r:Math.random()*0.8+0.2, vx:(Math.random()-0.5)*0.15, vy:(Math.random()-0.5)*0.15,
+    a:Math.random(),
+  });
+  function draw() {
+    ctx.clearRect(0,0,c.width,c.height);
+    for (const p of pts) {
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=c.width; if(p.x>c.width)p.x=0;
+      if(p.y<0)p.y=c.height; if(p.y>c.height)p.y=0;
+      p.a+=0.005; if(p.a>Math.PI*2)p.a=0;
+      const alpha = 0.08 + Math.sin(p.a)*0.05;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(168,216,255,${alpha})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ════════════════════════════════════════════════════════════════════════════
+// THREE.JS BLOB — shared shaders, reused across screens
+// ════════════════════════════════════════════════════════════════════════════
+const VS = `
+  uniform float u_time, u_speed, u_turbulence, u_blobScale;
+  uniform float u_freq[6], u_phase[6], u_amp[6];
+  varying vec3 v_normal, v_pos, v_worldPos, v_viewDir;
+  varying float v_disp;
+  float sl(vec3 n,float freq,float phase,float amp,float t){
+    return sin(n.x*freq+phase+t*u_speed*0.4)*cos(n.y*freq*1.17+phase*1.3+t*u_speed*0.3)*sin(n.z*freq*0.83+phase*0.7+t*u_speed*0.5)*amp;
+  }
+  void main(){
+    vec3 n=normalize(normal);
+    float identity=0.0;
+    for(int i=0;i<6;i++) identity+=sl(n,u_freq[i],u_phase[i],u_amp[i],u_time);
+    float turb=0.0;
+    if(u_turbulence>0.0){
+      turb+=sin(n.x*3.7+u_time*u_speed*1.1)*cos(n.y*2.9+u_time*u_speed*0.8)*0.08*u_turbulence;
+      turb+=sin(n.y*4.3+u_time*u_speed*0.7)*sin(n.z*3.1+u_time*u_speed*1.3)*0.06*u_turbulence;
+    }
+    float d=identity+turb;
+    vec3 disp=n*(u_blobScale+d*u_blobScale);
+    v_pos=disp; v_disp=d;
+    vec4 wp=modelMatrix*vec4(disp,1.0);
+    v_worldPos=wp.xyz; v_normal=normalize(normalMatrix*n);
+    v_viewDir=normalize(cameraPosition-wp.xyz);
+    gl_Position=projectionMatrix*modelViewMatrix*vec4(disp,1.0);
+  }
+`;
+const FS = `
+  precision highp float;
+  uniform float u_time,u_speed,u_glossiness,u_transparency,u_iridAmt,u_innerGlow;
+  uniform vec3 u_color;
+  varying vec3 v_normal,v_pos,v_worldPos,v_viewDir; varying float v_disp;
+  vec3 irid(float a,float t){
+    float tt=a*3.0+t*u_speed*0.12;
+    return vec3(0.5+0.5*sin(tt),0.5+0.5*sin(tt*1.4+2.1),0.5+0.5*sin(tt*0.8+4.3));
+  }
+  void main(){
+    vec3 N=normalize(v_normal),V=normalize(v_viewDir);
+    float NdV=max(dot(N,V),0.0);
+    float fr=pow(1.0-NdV,3.2), frs=pow(1.0-NdV,1.5);
+    float df=pow(NdV,0.55);
+    vec3 interior=u_color*(0.15+df*0.45);
+    vec3 rim=mix(u_color,irid(NdV,u_time),u_iridAmt*0.75)*fr*2.5;
+    vec3 L1=normalize(vec3(1.2,2.0,2.5)); vec3 H1=normalize(V+L1);
+    float sp=30.0+u_glossiness*180.0;
+    float s1=pow(max(dot(N,H1),0.0),sp), s1w=pow(max(dot(N,H1),0.0),12.0);
+    vec3 L2=normalize(vec3(-1.0,-1.5,0.8)); vec3 H2=normalize(V+L2);
+    float s2=pow(max(dot(N,H2),0.0),35.0);
+    vec3 L3=normalize(vec3(0.0,0.5,-1.5));
+    float back=pow(max(dot(-N,L3),0.0),4.0)*0.3;
+    vec3 bl=u_color*back*u_innerGlow*0.5;
+    float sss=pow(1.0-df,2.5)*u_innerGlow;
+    vec3 sssC=u_color*1.2*sss;
+    float cT=u_time*u_speed;
+    float caus=pow(max(sin(v_pos.x*7.0+cT*1.1)*cos(v_pos.y*8.0+cT*0.8),0.0),7.0);
+    caus+=pow(max(cos(v_pos.z*6.0+cT*1.4)*sin(v_pos.x*9.0+cT*0.6),0.0),9.0);
+    vec3 causC=mix(vec3(1.0),u_color*1.5,0.4)*caus*0.45*(1.0-fr);
+    vec3 col=interior+rim+vec3(1.0)*(s1*2.0+s1w*0.3)+u_color*s2*0.5+bl+sssC+causC;
+    float alpha=u_transparency*0.25+fr*(0.5+u_transparency*0.3)+s1*0.6+s1w*0.08+sss*0.3;
+    gl_FragColor=vec4(col,clamp(alpha,0.0,1.0));
+  }
+`;
+const BACK_FS = `
+  precision highp float;
+  uniform vec3 u_color; uniform float u_innerGlow,u_transparency;
+  varying vec3 v_normal,v_viewDir;
+  void main(){
+    vec3 N=normalize(v_normal),V=normalize(v_viewDir);
+    float NdV=abs(dot(N,V)), d=pow(1.0-NdV,1.6);
+    vec3 col=u_color*0.2+u_color*d*u_innerGlow*0.45;
+    gl_FragColor=vec4(col,clamp(d*0.28*u_transparency+0.04,0.0,1.0));
+  }
+`;
+
+function makeUniforms(dna) {
+  return {
+    u_time:        {value:0},
+    u_speed:       {value:0.45},
+    u_turbulence:  {value:0},
+    u_blobScale:   {value:1.0},
+    u_freq:        {value:[...dna.freqs]},
+    u_phase:       {value:[...dna.phases]},
+    u_amp:         {value:[...dna.amps]},
+    u_glossiness:  {value:dna.glossiness},
+    u_transparency:{value:dna.transparency},
+    u_iridAmt:     {value:dna.iridBase},
+    u_innerGlow:   {value:dna.innerGlow},
+    u_color:       {value:new THREE.Vector3(...dna.color)},
+  };
+}
+
+function applyDNAToUniforms(uniforms, dna, speed, turbulence) {
+  uniforms.u_freq.value    = [...dna.freqs];
+  uniforms.u_phase.value   = [...dna.phases];
+  uniforms.u_amp.value     = [...dna.amps];
+  uniforms.u_glossiness.value  = dna.glossiness;
+  uniforms.u_transparency.value = dna.transparency;
+  uniforms.u_iridAmt.value  = dna.iridBase;
+  uniforms.u_innerGlow.value = dna.innerGlow;
+  uniforms.u_color.value.set(...dna.color);
+  if (speed !== undefined) uniforms.u_speed.value = speed;
+  if (turbulence !== undefined) uniforms.u_turbulence.value = turbulence;
+}
+
+// ─── Welcome blob — full-bleed ────────────────────────────────────────────────
+const welcomeCanvas = document.getElementById('welcome-canvas');
+const wR = new THREE.WebGLRenderer({canvas:welcomeCanvas, antialias:true, alpha:false});
+wR.setClearColor(0x01010a, 1);
+
+const wScene=new THREE.Scene();
+const wCam=new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 50);
+wCam.position.set(0,0,4);
+
+function resizeWelcome() {
+  const W = window.innerWidth, H = window.innerHeight;
+  wR.setSize(W, H);
+  wR.setPixelRatio(Math.min(devicePixelRatio, 2));
+  wCam.aspect = W / H;
+  wCam.updateProjectionMatrix();
+}
+window.addEventListener('resize', resizeWelcome);
+resizeWelcome();
+
+const wGeo=new THREE.SphereGeometry(1,96,96);
+const wDNA=neutralDNA();
+const wFront=new THREE.ShaderMaterial({vertexShader:VS,fragmentShader:FS,uniforms:makeUniforms(wDNA),transparent:true,side:THREE.FrontSide,depthWrite:false});
+const wBack=new THREE.ShaderMaterial({vertexShader:VS,fragmentShader:BACK_FS,uniforms:makeUniforms(wDNA),transparent:true,side:THREE.BackSide,depthWrite:false});
+const wMesh=new THREE.Mesh(wGeo,wFront); const wMeshB=new THREE.Mesh(wGeo,wBack);
+wScene.add(wMeshB); wScene.add(wMesh);
+// Halo — boosted for full-screen presence
+const wHaloMat=new THREE.ShaderMaterial({
+  vertexShader:`varying vec3 vN,vV;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(cameraPosition-wp.xyz);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader:`precision highp float;uniform vec3 u_color;uniform float u_glow;varying vec3 vN,vV;void main(){float f=pow(1.0-abs(dot(normalize(vN),normalize(vV))),2.4);gl_FragColor=vec4(u_color,f*u_glow*0.28);}`,
+  uniforms:{u_color:{value:new THREE.Vector3(...wDNA.color)},u_glow:{value:0.6}},
+  transparent:true,side:THREE.BackSide,depthWrite:false,
+});
+wScene.add(new THREE.Mesh(new THREE.SphereGeometry(2.2,32,32),wHaloMat));
+
+let wRX=0,wRY=0,wRZ=0,wClock=0;
+function animWelcome() {
+  if (document.getElementById('s-welcome').classList.contains('active')) {
+    requestAnimationFrame(animWelcome);
+    wClock+=0.010;
+    wFront.uniforms.u_time.value=wClock;
+    wBack.uniforms.u_time.value=wClock;
+    wRX+=wDNA.rotXRate; wRY+=wDNA.rotYRate; wRZ+=wDNA.rotZRate;
+    wMesh.rotation.set(wRX,wRY,wRZ); wMeshB.rotation.set(wRX,wRY,wRZ);
+    const breath=1+Math.sin(wClock*wDNA.breathFreq)*wDNA.breathAmt;
+    wMesh.scale.setScalar(breath); wMeshB.scale.setScalar(breath);
+    wR.render(wScene,wCam);
+  }
+}
+animWelcome();
+
+// ─── Lobby Three.js ────────────────────────────────────────────────────────────
+let lobbyRenderer, lobbyScene, lobbyCam;
+let myBlobFront, myBlobBack, myBlobHalo;
+let myBlobFrontMat, myBlobBackMat, myBlobHaloMat;
+let lobbyOtherMeshes = [];   // {mesh, mat, dna, angle, dist}
+let lobbyClock=0, lobRX=0,lobRY=0,lobRZ=0;
+let lobbyAnimRunning = false;
+
+function initLobbyRenderer() {
+  const canvas = document.getElementById('lobby-canvas');
+  const wrap   = document.getElementById('fieldWrap');
+  const W = wrap.clientWidth  || 360;
+  const H = wrap.clientHeight || 500;
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width  = W+'px';
+  canvas.style.height = H+'px';
+
+  lobbyRenderer = new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+  lobbyRenderer.setSize(W,H,false);
+  lobbyRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  lobbyRenderer.setClearColor(0x01010a,1);
+
+  lobbyScene = new THREE.Scene();
+  lobbyCam = new THREE.PerspectiveCamera(50, W/H, 0.1, 50);
+  lobbyCam.position.set(0,0,5);
+
+  const geo = new THREE.SphereGeometry(1,96,96);
+  const dna = myDNA || neutralDNA();
+
+  myBlobFrontMat = new THREE.ShaderMaterial({vertexShader:VS,fragmentShader:FS,uniforms:makeUniforms(dna),transparent:true,side:THREE.FrontSide,depthWrite:false});
+  myBlobBackMat  = new THREE.ShaderMaterial({vertexShader:VS,fragmentShader:BACK_FS,uniforms:makeUniforms(dna),transparent:true,side:THREE.BackSide,depthWrite:false});
+  myBlobHaloMat  = new THREE.ShaderMaterial({
+    vertexShader:`varying vec3 vN,vV;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(cameraPosition-wp.xyz);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`precision highp float;uniform vec3 u_color;uniform float u_glow;varying vec3 vN,vV;void main(){float f=pow(1.0-abs(dot(normalize(vN),normalize(vV))),2.8);gl_FragColor=vec4(u_color,f*u_glow*0.2);}`,
+    uniforms:{u_color:{value:new THREE.Vector3(...dna.color)},u_glow:{value:dna.innerGlow}},
+    transparent:true,side:THREE.BackSide,depthWrite:false,
+  });
+
+  myBlobBack  = new THREE.Mesh(geo, myBlobBackMat);
+  myBlobFront = new THREE.Mesh(geo, myBlobFrontMat);
+  myBlobHalo  = new THREE.Mesh(new THREE.SphereGeometry(1.5,32,32), myBlobHaloMat);
+
+  lobbyScene.add(myBlobBack);
+  lobbyScene.add(myBlobFront);
+  lobbyScene.add(myBlobHalo);
+}
+
+function updateOtherBlobs(others) {
+  // Remove old meshes
+  for (const o of lobbyOtherMeshes) lobbyScene.remove(o.mesh);
+  lobbyOtherMeshes = [];
+
+  if (!lobbyScene) return;
+
+  others.forEach((o, i) => {
+    const angle = (i / Math.max(others.length,1)) * Math.PI * 2;
+    const dist  = 2.6;
+    const x = Math.cos(angle)*dist, y = Math.sin(angle)*dist*0.55;
+
+    // Small simple sphere for other blobs
+    const sGeo = new THREE.SphereGeometry(0.35,32,32);
+    const c = o.color || [0.5,0.7,1.0];
+    const sMat = new THREE.ShaderMaterial({
+      vertexShader:`varying vec3 vN,vV;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(cameraPosition-wp.xyz);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`precision highp float;uniform vec3 u_color;uniform float u_glow;varying vec3 vN,vV;void main(){vec3 N=normalize(vN),V=normalize(vV);float fr=pow(1.0-abs(dot(N,V)),2.5);float f=fr*(0.6+u_glow*0.5);gl_FragColor=vec4(u_color,clamp(f,0.0,1.0));}`,
+      uniforms:{u_color:{value:new THREE.Vector3(...c)}, u_glow:{value:o.innerGlow||0.4}},
+      transparent:true,depthWrite:false,
+    });
+    const mesh = new THREE.Mesh(sGeo, sMat);
+    mesh.position.set(x,y,0);
+    lobbyScene.add(mesh);
+    lobbyOtherMeshes.push({mesh,mat:sMat,angle,dist,phase:i,o});
+  });
+}
+
+function animLobby() {
+  if (!lobbyAnimRunning) return;
+  requestAnimationFrame(animLobby);
+  if (!lobbyRenderer) return;
+
+  lobbyClock += 0.010;
+
+  // Lerp my displayed DNA toward server DNA
+  if (myDNA && currentDNA) {
+    currentDNA = lerpDNA(currentDNA, myDNA, 0.03);
+  }
+
+  const dna = currentDNA || neutralDNA();
+  const speed = speedFromMood(worldData.mood);
+  const turb  = turbFromMood(worldData.mood);
+
+  applyDNAToUniforms(myBlobFrontMat.uniforms, dna, speed, turb);
+  applyDNAToUniforms(myBlobBackMat.uniforms,  dna, speed, turb);
+  myBlobFrontMat.uniforms.u_time.value = lobbyClock;
+  myBlobBackMat.uniforms.u_time.value  = lobbyClock;
+  myBlobHaloMat.uniforms.u_color.value.set(...dna.color);
+  myBlobHaloMat.uniforms.u_glow.value = dna.innerGlow;
+
+  lobRX += dna.rotXRate; lobRY += dna.rotYRate; lobRZ += dna.rotZRate;
+  myBlobFront.rotation.set(lobRX,lobRY,lobRZ);
+  myBlobBack.rotation.set(lobRX,lobRY,lobRZ);
+
+  const breath = 1 + Math.sin(lobbyClock*dna.breathFreq*speed*1.2)*dna.breathAmt;
+  myBlobFront.scale.setScalar(breath);
+  myBlobBack.scale.setScalar(breath);
+  myBlobHalo.scale.setScalar(breath);
+
+  // Animate other blobs — gentle orbit
+  for (const ob of lobbyOtherMeshes) {
+    ob.angle += 0.0008;
+    const x = Math.cos(ob.angle)*ob.dist;
+    const y = Math.sin(ob.angle)*ob.dist*0.55;
+    ob.mesh.position.set(x,y,0);
+    // Pulse scale
+    const s = 0.35 + Math.sin(lobbyClock*0.8+ob.phase)*0.04;
+    ob.mesh.scale.setScalar(s);
+  }
+
+  lobbyRenderer.render(lobbyScene, lobbyCam);
+}
+
+// ─── Mediation triangle canvas ─────────────────────────────────────────────
+function drawTriangle(ai, art, usr) {
+  const c = document.getElementById('tri-canvas');
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0,0,360,200);
+
+  // Triangle vertices
+  const cx=180, cy=105;
+  const pts = [
+    {x:cx,    y:20,   label:'AI',     pct:ai,  color:'#a8d8ff'},
+    {x:cx-90, y:175,  label:'ARTIST', pct:art, color:'#f5d97e'},
+    {x:cx+90, y:175,  label:'USER',   pct:usr, color:'#86efac'},
+  ];
+
+  // Draw lines
+  ctx.strokeStyle='rgba(255,255,255,0.07)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y);
+  ctx.lineTo(pts[2].x,pts[2].y); ctx.closePath(); ctx.stroke();
+
+  // Centroid weighted by intent
+  const tot=ai+art+usr||1;
+  const wx=(pts[0].x*(ai/tot)+pts[1].x*(art/tot)+pts[2].x*(usr/tot));
+  const wy=(pts[0].y*(ai/tot)+pts[1].y*(art/tot)+pts[2].y*(usr/tot));
+
+  // Lines from centroid to each vertex
+  for (const p of pts) {
+    const grad=ctx.createLinearGradient(wx,wy,p.x,p.y);
+    grad.addColorStop(0,'rgba(255,255,255,0.12)');
+    grad.addColorStop(1,p.color.replace('#','rgba(').replace(/(..)(..)(..)/, (_,r,g,b)=>`rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},`)+',0.35)');
+    ctx.beginPath(); ctx.moveTo(wx,wy); ctx.lineTo(p.x,p.y);
+    ctx.strokeStyle=p.color+'55'; ctx.lineWidth=1.5; ctx.stroke();
+  }
+
+  // Dots at vertices
+  for (const p of pts) {
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,4,0,Math.PI*2);
+    ctx.fillStyle=p.color; ctx.fill();
+    ctx.font='9px Space Mono'; ctx.fillStyle='rgba(232,232,240,0.35)'; ctx.textAlign='center';
+    const ly = p.y < cy ? p.y-10 : p.y+14;
+    ctx.fillText(p.label+' '+p.pct+'%',p.x,ly);
+  }
+
+  // Center dot
+  ctx.beginPath(); ctx.arc(wx,wy,5,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fill();
+}
+
+// ─── Lerp DNA helper (client side) ───────────────────────────────────────────
+function lerpDNA(a,b,t){
+  const lv=(x,y)=>x+(y-x)*t;
+  return {...a,
+    color:a.color.map((v,i)=>lv(v,b.color[i])),
+    freqs:a.freqs.map((v,i)=>lv(v,b.freqs[i])),
+    amps:a.amps.map((v,i)=>lv(v,b.amps[i])),
+    phases:a.phases.map((v,i)=>lv(v,b.phases[i])),
+    glossiness:lv(a.glossiness,b.glossiness),
+    transparency:lv(a.transparency,b.transparency),
+    iridBase:lv(a.iridBase,b.iridBase),
+    innerGlow:lv(a.innerGlow,b.innerGlow),
+  };
+}
+
+function speedFromMood(m){
+  return {DRIFT:0.45,SURGE:1.3,STILL:0.18,PULSE:0.85,BLOOM:0.55,ERODE:0.7,VOID:0.22}[m]||0.45;
+}
+function turbFromMood(m){
+  return {DRIFT:0,SURGE:0.6,STILL:-0.3,PULSE:0.2,BLOOM:0.1,ERODE:0.45,VOID:-0.4}[m]||0;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SCREEN TRANSITIONS
+// ════════════════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goToIdentity() {
+  showScreen('s-identity');
+  renderQuestions();
+  onSlider();
+}
+
+function goToLobby() {
+  showScreen('s-lobby');
+  // Init lobby renderer after screen is visible (so layout is ready)
+  requestAnimationFrame(() => {
+    initLobbyRenderer();
+    lobbyAnimRunning = true;
+    animLobby();
+    currentDNA = myDNA ? {...myDNA} : neutralDNA();
+    // Start WebGL triangle animation
+    initTriRenderers();
+    triAnimRunning = true;
+    animTriangles();
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// IDENTITY SCREEN
+// ════════════════════════════════════════════════════════════════════════════
+function renderQuestions() {
+  const container = document.getElementById('questionsContainer');
+  if (!questions.length) {
+    // Fallback if server hasn't sent questions yet
+    questions = [
+      {id:'q1', prompt:'What brought you here today?',    placeholder:'A word, a feeling, a reason…'},
+      {id:'q2', prompt:'What are you carrying with you?', placeholder:'Something on your mind…'},
+      {id:'q3', prompt:'What do you want to leave behind?', placeholder:'Let it dissolve here…'},
+    ];
+  }
+  container.innerHTML = '<span class="section-label">Your responses shape the form</span>';
+  for (const q of questions) {
+    const div = document.createElement('div');
+    div.className = 'q-item fade-up';
+    div.innerHTML = `
+      <div class="q-prompt">${q.prompt}</div>
+      <textarea class="q-input" id="ans-${q.id}" rows="2" placeholder="${q.placeholder}"></textarea>
+    `;
+    container.appendChild(div);
+  }
+}
+
+function onSlider() {
+  const ai  = parseInt(document.getElementById('sl-ai').value);
+  const art = parseInt(document.getElementById('sl-art').value);
+  const usr = parseInt(document.getElementById('sl-usr').value);
+  const tot = ai+art+usr||1;
+  // Normalise display to 100%
+  const nai=Math.round(ai/tot*100), nart=Math.round(art/tot*100), nusr=100-nai-nart;
+  intent = {ai:nai, artist:nart, user:nusr};
+
+  document.getElementById('sf-ai').style.width  = nai+'%';
+  document.getElementById('sf-art').style.width = nart+'%';
+  document.getElementById('sf-usr').style.width = nusr+'%';
+  document.getElementById('sp-ai').textContent  = nai+'%';
+  document.getElementById('sp-art').textContent = nart+'%';
+  document.getElementById('sp-usr').textContent = nusr+'%';
+
+  drawTriangle(nai, nart, nusr);
+  sendWs({type:'update_intent', payload:intent});
+  refreshMiniTri();
+}
+
+function onImageChange(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const drop = document.getElementById('imgDrop');
+  const preview = document.getElementById('imgPreview');
+  drop.classList.add('has-image');
+  const reader = new FileReader();
+  reader.onload = e => {
+    preview.src = e.target.result;
+    // Compute a simple hash from the image data
+    const data = e.target.result;
+    let h = 0;
+    for (let i=0; i<Math.min(data.length, 2000); i++)
+      h = ((h<<5)-h + data.charCodeAt(i)) | 0;
+    imageHash = Math.abs(h);
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitIdentity() {
+  const answers = questions.map(q => {
+    const el = document.getElementById('ans-'+q.id);
+    return el ? el.value.trim() : '';
+  });
+
+  const payload = { answers, imageHash, intent };
+
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendWs({type:'submit_identity', payload});
+    // Wait for identity_confirmed before going to lobby
+  } else {
+    // Offline fallback: generate DNA locally
+    myDNA = localIdentityDNA(answers, imageHash, intent);
+    goToLobby();
+  }
+}
+
+// Offline DNA generation (mirrors server logic)
+function localIdentityDNA(answers, imgH, intentObj) {
+  const text = (answers||[]).join(' ');
+  let seed = imgH||0;
+  for (let i=0;i<text.length;i++) seed=((seed<<5)-seed+text.charCodeAt(i))|0;
+  seed=Math.abs(seed);
+  const rng=mulberry32(seed);
+  const hue=rng()*360;
+  const color=hslToRgb01(hue,0.5+rng()*0.5,0.55+rng()*0.3);
+  const aiW=(intentObj?.ai??33)/100;
+  const artW=(intentObj?.artist??33)/100;
+  const usrW=(intentObj?.user??34)/100;
+  return {
+    color, freqs:Array.from({length:6},()=>0.6+rng()*2.2+aiW*0.8),
+    amps:Array.from({length:6},()=>0.06+rng()*0.18+artW*0.07),
+    phases:Array.from({length:6},()=>rng()*Math.PI*2*(1+usrW*0.5)),
+    glossiness:0.3+rng()*0.6+aiW*0.1, transparency:0.3+rng()*0.5,
+    iridBase:0.15+rng()*0.55+artW*0.15, innerGlow:0.15+rng()*0.6+usrW*0.15,
+    breathFreq:0.3+rng()*0.5, breathAmt:0.01+rng()*0.02,
+    rotXRate:(rng()-0.5)*0.0014, rotYRate:0.0008+rng()*0.0018, rotZRate:(rng()-0.5)*0.0009,
+  };
+}
+
+function mulberry32(seed){
+  return function(){
+    seed|=0;seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function hslToRgb01(h,s,l){
+  h/=360;const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q;
+  return[hr(p,q,h+1/3),hr(p,q,h),hr(p,q,h-1/3)];
+}
+function hr(p,q,t){
+  if(t<0)t+=1;if(t>1)t-=1;
+  if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOBBY UI UPDATES
+// ════════════════════════════════════════════════════════════════════════════
+function updateWorldUI(w) {
+  worldData = w;
+  document.getElementById('wMood').textContent    = w.mood||'DRIFT';
+  document.getElementById('wAI').textContent      = (w.ai||0)+'%';
+  document.getElementById('wArtist').textContent  = (w.artist||0)+'%';
+  document.getElementById('wUser').textContent    = (w.user||0)+'%';
+  document.getElementById('wEnergy').textContent  = w.energy ? (w.energy*100).toFixed(0)+'%' : '—';
+  // Keep field intent in sync with world averages
+  fieldIntent = { ai: w.ai||33, artist: w.artist||33, user: w.user||34 };
+  refreshMiniTri();
+  // Update welcome screen mood label too
+  const wm = document.getElementById('w-mood');
+  if (wm) wm.textContent = w.mood||'DRIFT';
+}
+
+function updatePresenceUI(count) {
+  const label = count===1 ? '1 present' : count+' present';
+  document.getElementById('lobbyCountLabel').textContent = label;
+  const pct = Math.min(count*20,100).toFixed(0);
+  document.getElementById('crossLabel').textContent = 'FIELD INFLUENCE: '+pct+'%';
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// WEBSOCKET
+// ════════════════════════════════════════════════════════════════════════════
+let socket=null, reconnectTimer=null, reconnectDelay=1500;
+
+const wsDot   = document.getElementById('wsDot');
+const wsLabel = document.getElementById('wsLabel');
+
+function setWsStatus(state){
+  wsDot.className='ws-dot-sm '+state;
+  wsLabel.textContent={connecting:'CONNECTING',connected:'LIVE',error:'OFFLINE'}[state]||state;
+}
+
+function connect(){
+  if(socket&&socket.readyState<2) return;
+  setWsStatus('connecting');
+  socket=new WebSocket(WS_URL);
+
+  socket.onopen=()=>{
+    setWsStatus('connected');
+    reconnectDelay=1500;
+    clearTimeout(reconnectTimer);
+    // Send initial intent
+    sendWs({type:'update_intent',payload:intent});
+    // Keepalive
+    const ping=setInterval(()=>{
+      if(socket.readyState===WebSocket.OPEN) sendWs({type:'ping'});
+      else clearInterval(ping);
+    },25000);
+  };
+
+  socket.onmessage=(e)=>{
+    let msg; try{msg=JSON.parse(e.data);}catch{return;}
+    handleMsg(msg);
+  };
+
+  socket.onerror=()=>setWsStatus('error');
+  socket.onclose=()=>{
+    setWsStatus('error');
+    reconnectDelay=Math.min(reconnectDelay*1.5,30000);
+    reconnectTimer=setTimeout(connect,reconnectDelay);
+  };
+}
+
+function handleMsg(msg) {
+  switch(msg.type){
+
+    case 'welcome':
+      sessionId = msg.payload.sessionId;
+      if (msg.payload.questions) questions = msg.payload.questions;
+      if (msg.payload.world) updateWorldUI(msg.payload.world);
+      break;
+
+    case 'identity_confirmed':
+      myDNA = msg.payload.dna;
+      currentDNA = {...myDNA};
+      goToLobby();
+      break;
+
+    case 'tick':
+      if (msg.payload.myDNA) myDNA = msg.payload.myDNA;
+      if (msg.payload.world) updateWorldUI(msg.payload.world);
+      if (msg.payload.others !== undefined) {
+        otherBlobs = msg.payload.others;
+        updateOtherBlobs(otherBlobs);
+      }
+      break;
+
+    case 'presence':
+      updatePresenceUI(msg.payload.lobbyCount||0);
+      break;
+
+    case 'reset':
+      myDNA=null; currentDNA=null; otherBlobs=[];
+      showScreen('s-welcome');
+      animWelcome();
+      break;
+
+    case 'operator_state':
+      // Could show a paused overlay here
+      break;
+  }
+}
+
+function sendWs(obj){
+  if(socket&&socket.readyState===WebSocket.OPEN) socket.send(JSON.stringify(obj));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// WEBGL TRIANGLE RENDERER
+// Shared shader approach: each triangle is a WebGL canvas with animated
+// glass-like geometry matching the blob aesthetic.
+// ════════════════════════════════════════════════════════════════════════════
+
+const TRI_VS = `
+  attribute vec2 a_pos;
+  varying vec2 v_uv;
+  void main(){
+    v_uv = a_pos;
+    gl_Position = vec4(a_pos, 0.0, 1.0);
+  }
+`;
+
+// Fragment shader: draws an animated glowing triangle with iridescent edges
+const TRI_FS = `
+  precision highp float;
+  uniform float u_time;
+  uniform vec3  u_colA;   // AI vertex colour   (crystal)
+  uniform vec3  u_colB;   // Artist vertex colour (gold)
+  uniform vec3  u_colC;   // User vertex colour  (green)
+  uniform vec3  u_dot;    // centroid colour (personal)
+  uniform vec2  u_vA;     // vertex A position (NDC)
+  uniform vec2  u_vB;
+  uniform vec2  u_vC;
+  uniform vec2  u_cent;   // weighted centroid
+  uniform float u_scale;  // 1.0 = normal, smaller for mini
+  varying vec2  v_uv;
+
+  float distToSeg(vec2 p, vec2 a, vec2 b){
+    vec2 ab=b-a, ap=p-a;
+    float t=clamp(dot(ap,ab)/dot(ab,ab),0.0,1.0);
+    return length(ap-t*ab);
+  }
+
+  vec3 irid(float t){
+    return vec3(
+      0.5+0.5*sin(t*1.0+0.0),
+      0.5+0.5*sin(t*1.4+2.1),
+      0.5+0.5*sin(t*0.8+4.3)
+    );
+  }
+
+  void main(){
+    vec2 p = v_uv;
+    float edge = u_scale * 0.012;
+    float glow = u_scale * 0.06;
+
+    // Distance to each edge
+    float dAB = distToSeg(p, u_vA, u_vB);
+    float dBC = distToSeg(p, u_vB, u_vC);
+    float dCA = distToSeg(p, u_vC, u_vA);
+
+    // Animated iridescent edge glow
+    float tAnim = u_time * 0.4;
+    float eAB = exp(-dAB / glow) * (0.6 + 0.4*sin(tAnim + length(p-u_vA)*8.0));
+    float eBC = exp(-dBC / glow) * (0.6 + 0.4*sin(tAnim*1.3 + length(p-u_vB)*6.0));
+    float eCA = exp(-dCA / glow) * (0.6 + 0.4*sin(tAnim*0.7 + length(p-u_vC)*7.0));
+
+    vec3 edgeCol = u_colA * eAB + u_colB * eBC + u_colC * eCA;
+
+    // Sharp edge lines
+    float lineAB = smoothstep(edge, 0.0, dAB);
+    float lineBC = smoothstep(edge, 0.0, dBC);
+    float lineCA = smoothstep(edge, 0.0, dCA);
+    vec3 lineCol = u_colA*lineAB + u_colB*lineBC + u_colC*lineCA;
+
+    // Interior fill — subtle gradient from centroid
+    vec2 toCent = p - u_cent;
+    float interior = exp(-dot(toCent,toCent)*6.0) * 0.18;
+
+    // Iridescent shimmer inside
+    float shimmer = sin(p.x*18.0+u_time*0.6)*cos(p.y*14.0+u_time*0.4)*0.5+0.5;
+    vec3 iridCol = irid(length(toCent)*12.0 + u_time*0.3) * shimmer * 0.08;
+
+    // Centroid dot
+    float dotR = u_scale * 0.028;
+    float dotD = length(p - u_cent);
+    float dotCore  = smoothstep(dotR,       dotR*0.3,  dotD);
+    float dotGlow  = exp(-dotD/(u_scale*0.07)) * 0.5;
+    vec3  dotCol   = u_dot * (dotCore + dotGlow);
+
+    // Vertex glow dots
+    float vr = u_scale * 0.022;
+    float vgA = exp(-length(p-u_vA)/(u_scale*0.04)) * 0.6;
+    float vgB = exp(-length(p-u_vB)/(u_scale*0.04)) * 0.6;
+    float vgC = exp(-length(p-u_vC)/(u_scale*0.04)) * 0.6;
+    vec3 vCol = u_colA*vgA + u_colB*vgB + u_colC*vgC;
+
+    // Compose
+    vec3 col = edgeCol * 0.35
+             + lineCol * 0.9
+             + u_dot * interior
+             + iridCol
+             + dotCol
+             + vCol * 0.5;
+
+    // Alpha: only visible near edges/dot/vertices
+    float alpha = clamp(
+      (eAB+eBC+eCA)*0.5 + lineAB+lineBC+lineCA
+      + dotCore + dotGlow*0.4
+      + vgA+vgB+vgC + interior*2.0,
+      0.0, 1.0
+    );
+
+    gl_FragColor = vec4(col, alpha * 0.95);
+  }
+`;
+
+// Build a WebGL context + compiled program for a triangle canvas
+function buildTriGL(canvas) {
+  const gl = canvas.getContext('webgl', {alpha:true, premultipliedAlpha:false});
+  if (!gl) return null;
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER,   TRI_VS));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, TRI_FS));
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  // Full-screen quad
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'a_pos');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  // Cache uniform locations
+  const U = {};
+  ['u_time','u_colA','u_colB','u_colC','u_dot','u_vA','u_vB','u_vC','u_cent','u_scale']
+    .forEach(n => U[n] = gl.getUniformLocation(prog, n));
+
+  return { gl, prog, U };
+}
+
+// Compute the three vertex positions in NDC for an equilateral triangle
+// rotated by `angle` (radians), with weighted centroid dot
+function triNDC(aiW, artW, usrW, angle, aspect) {
+  // Equilateral triangle, top vertex up, rotated by angle
+  const r = 0.72;
+  const baseAngles = [Math.PI/2, Math.PI/2 + 2*Math.PI/3, Math.PI/2 + 4*Math.PI/3];
+  const verts = baseAngles.map((a,i) => {
+    const aa = a + angle;
+    return [ Math.cos(aa)*r / aspect, Math.sin(aa)*r ];
+  });
+  // Weighted centroid
+  const tot = aiW+artW+usrW||1;
+  const cx = (verts[0][0]*(aiW/tot) + verts[1][0]*(artW/tot) + verts[2][0]*(usrW/tot));
+  const cy = (verts[0][1]*(aiW/tot) + verts[1][1]*(artW/tot) + verts[2][1]*(usrW/tot));
+  return { vA:verts[0], vB:verts[1], vC:verts[2], cent:[cx,cy] };
+}
+
+// Render one frame of a triangle
+function renderTriFrame(ctx, t, aiW, artW, usrW, angle, dotColor, scale) {
+  const {gl, U} = ctx;
+  const W = gl.canvas.width, H = gl.canvas.height;
+  gl.viewport(0,0,W,H);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+
+  const aspect = W/H;
+  const {vA,vB,vC,cent} = triNDC(aiW/100, artW/100, usrW/100, angle, aspect);
+
+  gl.useProgram(ctx.prog);
+  gl.uniform1f(U.u_time,  t);
+  gl.uniform3fv(U.u_colA, [0.66, 0.85, 1.0]);   // crystal
+  gl.uniform3fv(U.u_colB, [0.96, 0.85, 0.49]);   // gold
+  gl.uniform3fv(U.u_colC, [0.53, 0.94, 0.67]);   // green
+  gl.uniform3fv(U.u_dot,  dotColor);
+  gl.uniform2fv(U.u_vA,   vA);
+  gl.uniform2fv(U.u_vB,   vB);
+  gl.uniform2fv(U.u_vC,   vC);
+  gl.uniform2fv(U.u_cent, cent);
+  gl.uniform1f(U.u_scale, scale || 1.0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// ── Triangle instances ────────────────────────────────────────────────────────
+let triMiniCtx  = null;  // lobby corner widget
+let triYouCtx   = null;  // overlay — your large triangle
+let triFieldCtx = null;  // overlay — field avg small triangle
+let triBlobCtx  = null;  // overlay — mini blob (reuses welcome renderer)
+
+let triClock = 0;
+let triAnimRunning = false;
+let triYouAngle   = 0;
+let triFieldAngle = 0;
+let triMiniAngle  = 0;
+
+// Which is currently "big" in the overlay: 'you' or 'field'
+let intentLargeIs = 'you';
+
+function initTriRenderers() {
+  const miniC  = document.getElementById('mini-tri-canvas');
+  const youC   = document.getElementById('intent-you-canvas');
+  const fieldC = document.getElementById('intent-field-canvas');
+
+  if (miniC  && !triMiniCtx)  triMiniCtx  = buildTriGL(miniC);
+  if (youC   && !triYouCtx)   triYouCtx   = buildTriGL(youC);
+  if (fieldC && !triFieldCtx) triFieldCtx = buildTriGL(fieldC);
+}
+
+function animTriangles() {
+  if (!triAnimRunning) return;
+  requestAnimationFrame(animTriangles);
+  triClock += 0.012;
+
+  const myColor  = myDNA  ? myDNA.color  : [0.66,0.85,1.0];
+  const fldColor = [0.53, 0.94, 0.67];   // field avg always greenish
+
+  // Rotation — triangles spin slowly, each at different speed
+  triMiniAngle  += 0.008;
+  triYouAngle   += 0.005;
+  triFieldAngle += 0.011;
+
+  // Mini corner widget (always shows YOUR intent)
+  if (triMiniCtx) {
+    renderTriFrame(triMiniCtx, triClock,
+      intent.ai, intent.artist, intent.user,
+      triMiniAngle, myColor, 0.85);
+  }
+
+  // Overlay triangles — only render if overlay is open
+  if (!intentOverlayOpen) return;
+
+  // Mini blob in overlay
+  renderOverlayBlob();
+
+  // YOU canvas always shows YOUR data, FIELD canvas always shows field data.
+  // CSS classes (primary/secondary) control which appears large — not which data is shown.
+  if (triYouCtx) {
+    renderTriFrame(triYouCtx, triClock,
+      intent.ai, intent.artist, intent.user,
+      triYouAngle, myColor, 1.0);
+  }
+  if (triFieldCtx) {
+    renderTriFrame(triFieldCtx, triClock,
+      fieldIntent.ai, fieldIntent.artist, fieldIntent.user,
+      triFieldAngle, fldColor, 1.0);
+  }
+}
+
+// ── Overlay open/close/swap ───────────────────────────────────────────────────
+let intentOverlayOpen = false;
+let fieldIntent = { ai:33, artist:33, user:34 };
+// intentLargeIs declared above near triClock
+
+function openIntentOverlay() {
+  intentOverlayOpen = true;
+  intentLargeIs = 'you';
+  document.getElementById('intent-overlay').classList.add('open');
+  requestAnimationFrame(() => {
+    initTriRenderers();
+    initOverlayBlob();
+    updateIntentOverlayLayout();
+  });
+}
+
+function closeIntentOverlay() {
+  intentOverlayOpen = false;
+  document.getElementById('intent-overlay').classList.remove('open');
+}
+
+function swapIntentTriangles() {
+  intentLargeIs = intentLargeIs === 'you' ? 'field' : 'you';
+  updateIntentOverlayLayout();
+}
+
+function updateIntentOverlayLayout() {
+  const youCanvas   = document.getElementById('intent-you-canvas');
+  const fieldCanvas = document.getElementById('intent-field-canvas');
+  const priLabel    = document.getElementById('intent-pri-label');
+  const secLabel    = document.getElementById('intent-sec-label');
+
+  if (intentLargeIs === 'you') {
+    // YOU is center/large
+    youCanvas.className   = 'intent-tri-primary';
+    fieldCanvas.className = 'intent-tri-secondary';
+    priLabel.textContent  = 'YOU';
+    secLabel.textContent  = 'FIELD AVG';
+  } else {
+    // FIELD is center/large
+    fieldCanvas.className = 'intent-tri-primary';
+    youCanvas.className   = 'intent-tri-secondary';
+    priLabel.textContent  = 'FIELD AVG';
+    secLabel.textContent  = 'YOU';
+  }
+}
+
+// Mini blob inside the overlay — uses a separate small Three.js renderer
+let overlayBlobRenderer = null;
+let overlayBlobScene, overlayBlobCam, overlayBlobMesh, overlayBlobBack;
+let overlayBlobFrontMat, overlayBlobBackMat;
+let overlayBlobClock = 0;
+
+function initOverlayBlob() {
+  const canvas = document.getElementById('intent-blob-canvas');
+  if (!canvas || overlayBlobRenderer) return;
+
+  overlayBlobRenderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  overlayBlobRenderer.setSize(160,160);
+  overlayBlobRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  overlayBlobRenderer.setClearColor(0x000000,0);
+
+  overlayBlobScene = new THREE.Scene();
+  overlayBlobCam   = new THREE.PerspectiveCamera(42,1,0.1,50);
+  overlayBlobCam.position.set(0,0,4);
+
+  const geo  = new THREE.SphereGeometry(1,64,64);
+  const dna  = myDNA || neutralDNA();
+
+  overlayBlobFrontMat = new THREE.ShaderMaterial({
+    vertexShader:VS, fragmentShader:FS,
+    uniforms:makeUniforms(dna), transparent:true, side:THREE.FrontSide, depthWrite:false,
+  });
+  overlayBlobBackMat = new THREE.ShaderMaterial({
+    vertexShader:VS, fragmentShader:BACK_FS,
+    uniforms:makeUniforms(dna), transparent:true, side:THREE.BackSide, depthWrite:false,
+  });
+
+  overlayBlobMesh = new THREE.Mesh(geo, overlayBlobFrontMat);
+  overlayBlobBack = new THREE.Mesh(geo, overlayBlobBackMat);
+  overlayBlobScene.add(overlayBlobBack);
+  overlayBlobScene.add(overlayBlobMesh);
+}
+
+// Called from animTriangles loop when overlay is open
+function renderOverlayBlob() {
+  if (!overlayBlobRenderer) return;
+  overlayBlobClock += 0.010;
+  const dna = currentDNA || neutralDNA();
+  applyDNAToUniforms(overlayBlobFrontMat.uniforms, dna, 0.45, 0);
+  applyDNAToUniforms(overlayBlobBackMat.uniforms,  dna, 0.45, 0);
+  overlayBlobFrontMat.uniforms.u_time.value = overlayBlobClock;
+  overlayBlobBackMat.uniforms.u_time.value  = overlayBlobClock;
+  const rx = dna.rotXRate * overlayBlobClock * 80;
+  const ry = dna.rotYRate * overlayBlobClock * 80;
+  overlayBlobMesh.rotation.set(rx, ry, 0);
+  overlayBlobBack.rotation.set(rx, ry, 0);
+  const breath = 1 + Math.sin(overlayBlobClock * dna.breathFreq) * dna.breathAmt;
+  overlayBlobMesh.scale.setScalar(breath);
+  overlayBlobBack.scale.setScalar(breath);
+  overlayBlobRenderer.render(overlayBlobScene, overlayBlobCam);
+}
+
+// Called from updateWorldUI and onSlider — no-op here, tri animates continuously
+function refreshMiniTri() {
+  if (!triMiniCtx) {
+    const miniC = document.getElementById('mini-tri-canvas');
+    if (miniC) triMiniCtx = buildTriGL(miniC);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Init
+drawTriangle(33,33,34);   // identity screen 2D preview triangle (unchanged)
+connect();
+</script>
+</body>
+</html>
