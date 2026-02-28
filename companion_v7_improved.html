@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Companion V7 Improved</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Companion V7 Improved</h1>
+        <nav>
+            <ul>
+                <li><a href="#settings">Settings</a></li>
+                <li><a href="#help">Help</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section id="settings">
+            <h2>Configuration</h2>
+            <div>
+                <label for="ws-url">WebSocket URL:</label>
+                <input type="text" id="ws-url" placeholder="Enter WebSocket URL">
+            </div>
+            <button id="connect-btn">Connect</button>
+        </section>
+        <section id="help">
+            <h2>Help</h2>
+            <p>Refer to the documentation for help on configuring and using the application.</p>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2026 Your Company Name. All rights reserved.</p>
+    </footer>
+    <script src="script.js"></script>
+    <script>
+        document.getElementById('connect-btn').addEventListener('click', function() {
+            const wsUrl = document.getElementById('ws-url').value;
+            if(wsUrl) {
+                const socket = new WebSocket(wsUrl);
+                socket.onopen = function() {
+                    console.log('Connected to WebSocket');
+                };
+                socket.onmessage = function(event) {
+                    console.log('Message from server', event.data);
+                };
+                socket.onclose = function() {
+                    console.log('WebSocket closed');
+                };
+            } else {
+                alert('Please enter a valid WebSocket URL.');
+            }
+        });
+    </script>
+</body>
+</html>
