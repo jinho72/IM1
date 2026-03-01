@@ -164,9 +164,9 @@ const httpServer = http.createServer((req, res) => {
     const lobby = [...sessions.values()].filter(s=>s.stage==='lobby').length;
     res.end(JSON.stringify({status:'ok',total:sessions.size,lobby,world:worldState,operator:operatorState}));
   } else if (req.url==='/' || req.url==='/index.html') {
-    const filePath = path.join(__dirname, 'companion_v7_accessible.html');
+    const filePath = path.join(__dirname, 'companion_v7_buttonchange_accessible.html');
     fs.readFile(filePath, (err, data) => {
-      if (err) { res.writeHead(404); res.end('companion_v7_accessible.html not found'); return; }
+      if (err) { res.writeHead(404); res.end('companion_v7_buttonchange_accessible.html not found'); return; }
       res.writeHead(200, {'Content-Type':'text/html'});
       res.end(data);
     });
