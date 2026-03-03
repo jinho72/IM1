@@ -191,9 +191,9 @@ const httpServer = http.createServer((req, res) => {
       res.end(data);
     });
   } else if (req.url==='/master' || req.url==='/master.html') {
-    const filePath = path.join(__dirname, 'inyun-master.html');
+    const filePath = path.join(__dirname, 'companion-master.html');
     fs.readFile(filePath, (err, data) => {
-      if (err) { res.writeHead(404); res.end('inyun-master.html not found'); return; }
+      if (err) { res.writeHead(404); res.end('companion-master.html not found'); return; }
       res.writeHead(200, {'Content-Type':'text/html'});
       res.end(data);
     });
