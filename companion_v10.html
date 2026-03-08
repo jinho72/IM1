@@ -2110,7 +2110,7 @@ function spd(m){return{DRIFT:0.45,SURGE:1.3,STILL:0.18,PULSE:0.85,BLOOM:0.55}[m]
 function trb(m){return{DRIFT:0,SURGE:0.6,STILL:-0.3,PULSE:0.2,BLOOM:0.1}[m]||0;}
 
 // ── SUBMIT & ENTER LOBBY ──────────────────────────────────────────────────────
-function submitAndEnter(){
+asyncfunction submitAndEnter(){
   const ans=[
     document.getElementById('a1').value.trim(),
     document.getElementById('a2').value.trim(),
@@ -2118,6 +2118,28 @@ function submitAndEnter(){
   ];
   myDNA=genDNA(ans,imgHash,intent);
   currentDNA={...myDNA};
+  
+  // Generate a session ID if we don't have one
+  if(!window.sessionId) window.sessionId = crypto.randomUUID();
+
+  // Save user to backend
+  try {
+    await fetch('https://im-api-production-a5a9.up.railway.app/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: window.sessionId,
+        blob_color: '#a8d8ff',
+        ai_pct: Math.round(intent.ai),
+        artist_pct: Math.round(intent.artist),
+        user_pct: Math.round(intent.user),
+        willing_mins: willingMins,
+        answers: { q1: ans[0], q2: ans[1], q3: ans[2] }
+      })
+    });
+  } catch(e) {
+    console.warn('API save failed, continuing anyway:', e);
+  } 
   goTo('5b'); // go to solo preview first
 }
 
