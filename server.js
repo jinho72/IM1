@@ -184,9 +184,9 @@ const httpServer = http.createServer((req, res) => {
       operator: operatorState,
     }));
   } else if (req.url==='/' || req.url==='/index.html') {
-    const filePath = path.join(__dirname, 'companion_v11_lightversiondemo.html');
+    const filePath = path.join(__dirname, 'companion_v14.html');
     fs.readFile(filePath, (err, data) => {
-      if (err) { res.writeHead(404); res.end('companion_v11_lightversiondemo.html not found'); return; }
+      if (err) { res.writeHead(404); res.end('companion_v14.html not found'); return; }
       res.writeHead(200, {'Content-Type':'text/html'});
       res.end(data);
     });
